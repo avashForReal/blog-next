@@ -10,9 +10,9 @@ import Tag from '@/components/Tag'
 import siteMetadata from '@/data/siteMetadata'
 import ScrollTopAndComment from '@/components/ScrollTopAndComment'
 
-const editUrl = (path) => `${siteMetadata.siteRepo}/blob/main/data/${path}`
-const discussUrl = (path) =>
-  `https://mobile.twitter.com/search?q=${encodeURIComponent(`${siteMetadata.siteUrl}/${path}`)}`
+// const editUrl = (path) => `${siteMetadata.siteRepo}/blob/main/data/${path}`
+// const discussUrl = (path) =>
+//   `https://mobile.twitter.com/search?q=${encodeURIComponent(`${siteMetadata.siteUrl}/${path}`)}`
 
 const postDateTemplate: Intl.DateTimeFormatOptions = {
   weekday: 'long',
@@ -74,14 +74,14 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                       <dl className="whitespace-nowrap text-sm font-medium leading-5">
                         <dt className="sr-only">Name</dt>
                         <dd className="text-gray-900 dark:text-gray-100">{author.name}</dd>
-                        <dt className="sr-only">Twitter</dt>
+                        <dt className="sr-only">Linkedin</dt>
                         <dd>
-                          {author.twitter && (
+                          {author.linkedin && (
                             <Link
-                              href={author.twitter}
+                              href={author.linkedin}
                               className="text-primary-500 hover:text-primary-600 dark:hover:text-primary-400"
                             >
-                              {author.twitter.replace('https://twitter.com/', '@')}
+                              {author.linkedin.replace('https://www.linkedin.com/', '@')}
                             </Link>
                           )}
                         </dd>
@@ -91,14 +91,15 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
                 </ul>
               </dd>
             </dl>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 xl:col-span-3 xl:row-span-2 xl:pb-0">
+            <div className="xl:col-span-3 xl:row-span-2 xl:pb-0">
               <div className="prose max-w-none pb-8 pt-10 dark:prose-invert">{children}</div>
               <div className="pb-6 pt-6 text-sm text-gray-700 dark:text-gray-300">
-                <Link href={discussUrl(path)} rel="nofollow">
+                <hr />
+                {/* <Link href={discussUrl(path)} rel="nofollow">
                   Discuss on Twitter
                 </Link>
                 {` • `}
-                <Link href={editUrl(filePath)}>View on GitHub</Link>
+                <Link href={editUrl(filePath)}>View on GitHub</Link> */}
               </div>
               {siteMetadata.comments && (
                 <div

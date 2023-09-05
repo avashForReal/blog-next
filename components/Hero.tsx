@@ -3,7 +3,7 @@ import Link from '@/components/Link'
 export default function Hero() {
   return (
     <>
-      <div className="relative overflow-hidden font-mono">
+      <div className="relative overflow-hidden py-24">
         <div className="relative z-20 flex items-center">
           <div className="container relative flex flex-col justify-between py-4">
             <div className="flex flex-col">

@@ -3,8 +3,8 @@ import Link from '@/components/Link'
 export default function Hero() {
   return (
     <>
-      <div className="relative overflow-hidden py-24">
-        <div className="relative z-20 flex items-center">
+      <div className="relative overflow-hidden py-16">
+        <div className="relative flex items-center">
           <div className="container relative flex flex-col justify-between py-4">
             <div className="flex flex-col">
               {/* <img src="/images/person/11.webp" className="mx-auto rounded-full w-28" /> */}
@@ -12,8 +12,9 @@ export default function Hero() {
               <h2 className="max-w-3xl py-2 text-3xl font-bold text-left text-gray-800 md:text-5xl dark:text-white">
                 Hi, I&#x27;m Avash 👋
               </h2>
-              <p className="my-6 text-xl text-left md:text-3xl dark:text-white">
-                I craft solutions for the web and I write.
+              <p className="my-6 text-xl text-left md:text-3xl dark:text-white md: w-3/4">
+                I'm a Software Engineer specialized in crafting innovative web solutions, adept at
+                all-round problem solving, and I also write technical blogs.
               </p>
               <div className="mt-8 mb-12">
                 <Link

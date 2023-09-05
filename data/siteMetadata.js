@@ -3,7 +3,7 @@ const siteMetadata = {
   title: "Avash's Blog",
   author: 'Avash Ghimire',
   headerTitle: "Avash's Blog",
-  description: '',
+  description: 'Here are some of my most recent articles.',
   language: 'en-us',
   theme: 'light', // system, dark or light
   siteUrl: 'https://avashghimire.com.np',

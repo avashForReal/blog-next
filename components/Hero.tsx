@@ -7,8 +7,6 @@ export default function Hero() {
         <div className="relative flex items-center">
           <div className="container relative flex flex-col justify-between py-4">
             <div className="flex flex-col">
-              {/* <img src="/images/person/11.webp" className="mx-auto rounded-full w-28" /> */}
-
               <h2 className="max-w-3xl py-2 text-3xl font-bold text-left text-gray-800 md:text-5xl dark:text-white">
                 Hi, I&#x27;m Avash 👋
               </h2>

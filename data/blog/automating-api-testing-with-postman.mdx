@@ -1,0 +1,181 @@
+---
+title: 'Automating API testing workflow in postman to boost your productivity'
+date: '2023-9-4'
+lastmod: '2023-9-4'
+tags: ['postman', 'API', 'productivity', 'guide']
+draft: false
+summary: 'Looking for a performant, out of the box template, with all the best in web technology to support your blogging needs? Checkout the Tailwind Nextjs Starter Blog template.'
+layout: PostLayout
+canonicalUrl: https://avashghimire.com.np/blog/automating-postman-workflow-for-faster-api-development
+---
+
+## Introduction
+
+API testing is a crucial aspect of software development, ensuring that your application's endpoints function as intended. However, manually managing the data required in API testing, such as bearer tokens and OTPs, during API testing can be a cumbersome and error-prone task. Today we will explore a more efficient way to handle data in your API testing workflow using [Postman](https://www.postman.com).
+
+## The Manual Data Management Challenge
+
+In traditional API testing, obtaining and using data like one time passwords or bearer tokens involves a manual process of sending a login request, copying the token from the response body, and pasting it into the authorization field of subsequent requests. This process not only consumes time but also introduces the risk of human errors, such as copying the wrong token or forgetting to update it.
+
+Let's explore a simplified user registration API that allows users to register using their phone numbers. After successfully submitting their phone numbers, the API responds by generating and returning a One-Time Password (OTP) for verification purposes.
+
+---
+
+_All API endpoints and code snippets along with the postman collection used in this guide are publicly available in this [github repo](https://github.com/avashForReal/postman-automation-demo)._
+
+---
+
+### Registration Endpoint Details
+
+HTTP Method: POST \
+URL: https://localhost:3030/register
+
+Request Body
+
+```
+{
+    "phone": 12345678890
+}
+```
+
+### OTP Verification Endpoint Details
+
+HTTP Method: POST \
+URL: https://localhost:3030/verify
+
+Request Body
+
+```
+{
+    "phone": 12345678890,
+    "otp": 6657
+}
+```
+
+While working with these endpoints in postman it quickly becomes tedious to frequently copy and paste OTP between registration and verify endpoints.
+
+## Solution: Automatically Set Environment Variables in Postman
+
+To address the challenges of manual data management, Postman offers a solution through the use of environments. Environments allow you to store variables that can be used across multiple requests, making it easier to manage and automate your testing scenarios.
+
+To create a new environment:
+
+1. Click 'File > New > Environment' in postman.
+
+![New Environment](/static/images/automate-postman/environment.png)
+
+2. Give your environment a name (e.g., "postman-demo").
+3. Select the newly created environment in your collection.
+
+### Sending a registration request
+
+Lets send a request to register endpoint.
+
+![Register](/static/images/automate-postman/register-body.png)
+
+Response
+
+```
+{
+    "success": true,
+    "message": "Registered",
+    "otp": 6657,
+    "phone": 12345678890
+}
+```
+
+We will write some code in **Tests** tab in postman. That code written there will only be executed after our request returns successfully.
+
+![Register-tests](/static/images/automate-postman/register-test.png)
+
+Here is the snippet:
+
+```
+const reqBody =  JSON.parse(pm.request.body);
+const resBody = JSON.parse(responseBody);
+
+pm.environment.set("otp", resBody.otp);
+pm.environment.set('phone_number', reqBody.phone);
+```
+
+The data that we sent in our request body can be accessed from `pm.request` object in `body` key and the response data is in `responseBody`.
+We then use the `set` method to set the environment variables. The first parameter of the `set` method is the key and second paramter is the value of our variable.
+
+A quick look into the environment variables from top right corner and we can see that both `otp` and `phone_number` fields are populated with correct values.
+
+![Register-tests](/static/images/automate-postman/set-variables.png)
+
+Now, we can access variables all over our collection using double curly brackets \
+`{{<variable-key-here>}}`. Thus, eliminating the tedious process of copying and pasting data in between requests.
+
+### Using automatically set variables in verify endpoint
+
+![Register-tests](/static/images/automate-postman/verify.png)
+
+```
+{
+    "phone": {{phone_number}},
+    "otp": {{otp}}
+}
+```
+
+Response
+
+```
+{
+    "success": true,
+    "message": "User verified",
+    "data": {
+        "id": "id_b7aab119f46e3",
+        "phone": 12345678890,
+        "otp": 6657,
+        "verified": false
+    }
+}
+```
+
+### Automating the login endpoint
+
+We can now follow a similar approach in login route to set authorization token in a variable using `set()` method which can be used in subsequent requests.
+
+![Register-tests](/static/images/automate-postman/login.png)
+
+Here we are setting the `jwt_token` variable with the jwt token returned from the login request.
+
+Request body
+
+```
+{
+    "phone": {{phone_number}}
+}
+```
+
+Since the `phone_number` variable has been already set in prior requests we won't have to input phone number for login. We simply skip the boring and tedious bits, yay! **:D**
+
+### Accessing protected routes
+
+Now we can use the token in the authorization tan of post man to authorize and access protected routes as well. We don't have to copy and paste the jwt token after every login with new phone number since that will be automatically updated by our script in tests tab.
+
+![Register-tests](/static/images/automate-postman/protected.png)
+
+A quick hover and we can see that the token has been set.
+
+![Register-tests](/static/images/automate-postman/hover.png)
+
+After sending the request we will get response from our jwt protected route.
+
+Response
+
+```
+{
+    "success": true,
+    "data": {
+        "secretData": "This is a secret data string. Shh!!",
+        "phone": 12345678890
+    }
+}
+```
+
+## Conclusion
+
+In the world of API development, efficiency and accuracy are paramount. Manually managing bearer tokens can be error-prone and time-consuming. By utilizing Postman's environment variables and scripting capabilities, you can automate this process, making your API testing more reliable and efficient.

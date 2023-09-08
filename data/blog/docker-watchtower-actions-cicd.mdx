@@ -1,0 +1,18 @@
+---
+title: 'CI/CD Made Easy: GitHub Actions, Docker Compose, and Watchtower'
+date: '2023-9-8'
+lastmod: '2023-9-8'
+tags: ['DevOps', 'Docker', 'CI/CD', 'Guide']
+draft: false
+summary: 'This article explores how to automate API testing workflows in Postman, improving efficiency by utilizing environment variables and scripting capabilities.'
+layout: PostLayout
+canonicalUrl: https://avashghimire.com.np/blog/automating-postman-workflow-for-faster-api-development
+---
+
+## Introduction
+
+Continuous Integration and Continuous Deployment (CI/CD) pipelines are an essential part of streamlining software development workflows, ensuring top-notch code quality, and delivering updates with speed and accuracy. Docker has become a go-to tool for packaging software into containers that can be easily deployed across different environments, making it a ubiquitous aspect of CI/CD pipelines. Furthermore, there are various orchestration tools available, including Kubernetes, Docker Swarm, and Docker Compose. Among these, Docker Compose stands out as a more simpler and starightforward orchestration tool that enables users to manage Docker containers seamlessly.
+
+Although tools like ArgoCD and FluxCD are available to continuously release newer versions of our application in Kubernetes and other similar tools for other engines, it appears that the Docker and Docker Compose ecosystem lacks such fancy tools. However, the introduction of watchtower has changed that.
+
+This article covers the use of Github Actions, Docker Compose, and Watchtower to create a simple and effective CI/CD tool. It's worth mentioning that although this solution may not be ideal for larger applications, it's still a highly effective method for rapidly setting up CI/CD pipelines for less complex applications or testing environments.

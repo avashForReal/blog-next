@@ -15,4 +15,160 @@ Continuous Integration and Continuous Deployment (CI/CD) pipelines are an essent
 
 Although tools like ArgoCD and FluxCD are available to continuously release newer versions of our application in Kubernetes and other similar tools for other engines, it appears that the Docker and Docker Compose ecosystem lacks such fancy tools. However, the introduction of watchtower has changed that.
 
+![cicd flow](/static/images/docker-watchtower/architecture.png)
+
 This article covers the use of Github Actions, Docker Compose, and Watchtower to create a simple and effective CI/CD tool. It's worth mentioning that although this solution may not be ideal for larger applications, it's still a highly effective method for rapidly setting up CI/CD pipelines for less complex applications or testing environments.
+
+---
+
+_You can find the all the codes used in this article in this [github repository](https://github.com/avashForReal/express-starter)._
+
+---
+
+## Setting up docker hub
+
+We will be dockerizing a simple express backend application and setting up a ci/cd pipeline for it. We will need a Github account and container registry to setup the first part i.e. CI part of our pipeline.
+
+We will use docker hub as our container registry. You will need to have an account in docker hub. If you donot have an account, go ahead and create one [here](https://hub.docker.com/).
+
+Now we need to create a docker hub repository to store our images. In the docker hub dashboard click on create repository button which you can find on the top right side below the navigation bar.
+
+You can give it any name your want. I will name mine, express-starter and keep it's visibility as public. You may change it to private according to your requirement and then click on create.
+
+![Create Docker Hub Repo](/static/images/docker-watchtower/create-hub-repo.png)
+
+We will also need access token to be able to push our docker images from github actions. To generate an access token head over to `Accout Settings > Security > New Access Token`.
+Give it a decription of your choice and click on Generate. Store the token safely as we will be using it later in our pipeline.
+
+dckr_pat_MQ5ftY6WSztuEF7gendBLTEBMeU
+
+## Setting up github and github actions
+
+We will be dockerizing the express application from the repository mentioned above. You may clone the repository and use the codebase available there or you may use your own codebase and Dockerfile.
+
+![Repo Files](/static/images/docker-watchtower/files.png)
+
+As we can see, we have a Dockerfile in our root directory with which we can build our docker image.
+
+```Dockerfile
+FROM node:18.17.0-alpine3.18
+WORKDIR /src
+COPY package.json .
+COPY yarn.lock .
+RUN yarn install
+COPY . .
+CMD ["npm", "start"]
+```
+
+The Dockerfile is a very simple one. We are taking a Node.js base image and running our start script after installing and copying required project dependencies.
+
+Let's add a Github Actions workflow in our project directory. Create a directory named `.github` and inside that directory create another directory named `workflows`. All our
+workflow files will be stored inside this directory. Create a file named `publish.yml` which will make the complete path as `.github/workflows/publish.yml`.
+
+Inside publish.yml, paste the code below:
+
+```yml
+name: pipeline
+on:
+  push:
+    branches:
+      - 'your-branch-to-build-from'
+
+jobs:
+  deploy:
+    name: build && push image to docker hub
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: 'same-as-branch-mentioned-above'
+
+      - name: setup docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: docker login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: build and push api
+        id: build-push-api
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: <your-dockerhub-username>/<your-dockerhub-repo>:<image-tag>
+```
+
+Modify the above YML file with your required values for branch, docker hub information and image tag. Use your docker hub username and dockerhub repository name created earlier. Here's a version of mine.
+
+```yml
+name: pipeline
+on:
+  push:
+    branches:
+      - 'deploy'
+
+jobs:
+  deploy:
+    name: build && push image to docker hub
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: deploy
+
+      - name: setup docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: docker login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: build and push api
+        id: build-push-api
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: itbeeazy/express-starter:latest
+```
+
+Now, whenever I push to `deploy` branch, a new build will be triggered which will build and push the image to docker hub. The workflow is pretty simple and you may also extend it with running tests or performing other actions as per your requirements.
+
+You may have noticed we have used `${{ secrets.DOCKERHUB_USERNAME }}` and `${{ secrets.DOCKERHUB_TOKEN }}` in our workflow. Those are the docker hub credential stored in Github Secrets. We cannot publicly expose them because they grant access to our docker hub account.
+
+Head over to Github Secrets page from `Settings > Secrets and variables > Actions` and click on `New repository secret`. Enter your docker hub username as shown below:
+
+![docker hub username](/static/images/docker-watchtower/repo-secret-username.png)
+
+Similarly, create another secret to store docker hub access token that we created in the earlier step.
+
+![docker hub username](/static/images/docker-watchtower/token.png)
+
+Our workflow is now ready. Let's test it by pushing something to the deploy branch. If you are using some other branch, push to the associated branch accordingly.
+
+---
+
+In some cases, GitHub Actions maybe disabled by default. Go to `Settings > Actions > General` and make sure `Allow all actions and reusable workflows` is chosen.
+
+---
+
+## Testing github actions workflow
+
+After pushing a commit to our repository, we can see that our workflow has ran successfully.
+
+![github actions](/static/images/docker-watchtower/action.png)
+
+To confirm that our docker image has been built and pushed to registry, let's head over to docker hub. We can see that our image has been pushed with the latest tag.
+
+![docker hub pushed image](/static/images/docker-watchtower/hub-repo-pushed.png)
+
+This wraps up the first part of our pipeline. Now will look into how we can automatically pull the image from docker hub whenever new iamge gets push in the repository

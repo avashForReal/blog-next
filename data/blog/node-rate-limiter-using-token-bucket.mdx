@@ -1,0 +1,297 @@
+---
+title: 'Enhance your Node.js API security by implementing rate limit using token bucket algorithm'
+date: '2024-07-04'
+lastmod: '2024-07-04'
+tags: ['javascript', 'programming', 'node.js', 'development', 'rate-limiting']
+draft: false
+summary: 'In the HTTP world, rate limiting is a technique used to control the rate at which a client can make requests to a web resource. '
+layout: PostLayout
+canonicalUrl: https://avashghimire.com.np/blog/node-rate-limiter-using-token-bucket
+---
+
+## Enhance your Node.js API security by implementing rate limit using token bucket algorithm
+In the HTTP world, rate limiting is a technique used to control the rate at which a client can make requests to a web resource. It prevents prevent system resource exhaustion by limiting the number of requests a client can make within a specified timeframe.
+This technique helps protect against attacks like Denial of Service (DoS), where malicious actors overwhelm a system with excessive requests, and ensures that legitimate requests are processed without degrading the application's performance. 
+
+Token bucket is one of the algorithms using which we cam implement rate limiting in out Node.js application. Lets understand its implementation using Node.js.
+
+![rate limiter](/static/images/rate-limiter/rate-limiter.svg)
+
+# #Table of Contents
+
+- [Token Bucket Algorithm](#token-bucket-algorithm)
+  - [Understanding the Token Bucket Algorithm](#understanding-the-token-bucket-algorithm)
+- [Implementing Timer Based Token Bucket in an Express.js Application](#implementing-timer-based-token-bucket-in-an-expressjs-application)
+  - [Cons Of Timer Based, System Wide Token Bucket Implementation](#cons-of-timer-based-system-wide-token-bucket-implementation)
+- [Timer Free Token Bucket](#timer-free-token-bucket)
+- [Implement IP Based Rate Limiting](#implement-ip-based-rate-limiting)
+- [Conclusion](#conclusion)
+
+
+## Token Bucket Algorithm
+One of the most popular algorithms for implementing rate limiting is the `Token Bucket` algorithm. This algorithm provides a smooth rate limiting mechanism by allowing bursts of requests up to a certain limit, followed by a steady flow of requests.
+
+### Understanding the Token Bucket Algorithm
+Token bucket algorithm can be understood as a bucket that holds a limited number of tokens. The tokens are added to a bucket at a constant rate and each incoming request consumes a token.
+If the bucket has enough tokens, the request is allowed; otherwise, the request is denied.
+
+The Token Bucket algorithm can be visualized by the following diagram:
+
+![token bucket](/static/images/rate-limiter/token-bucket.svg)
+
+#### Syntax
+
+```
+// token-bucket.js
+
+class TokenBucket {
+    constructor(capacity, fillRatePerSecond) {
+        // total capacity of the bucket i.e. maximum burst rate
+        this.capacity = capacity;
+        // total tokens available, initialized to total capacity at the beginning
+        this.tokens = capacity;
+
+        // if 2 tokens per  1000 millisecond (1s) is supplied then, 
+        // 1000/2 i.e 1 token will be generated every 500ms hence fulfilling out fill rate
+        this.fillDelta = 1000 / fillRatePerSecond
+
+        setInterval(() => this.addToken(), this.fillDelta)
+
+    }
+
+    getAvailableTokens() {
+        return this.tokens
+    }
+
+    addToken() {
+        if (this.tokens < this.capacity) {
+            this.tokens += 1
+        }
+    }
+
+    takeToken() {
+        if (this.tokens > 0) {
+            this.tokens -= 1
+            return true
+        }
+        return false
+    }
+}
+```
+
+
+Here is the breakdown of how `fillDelta` is calculated:
+
+- If the `fillRatePerSecond` is set to 2 tokens per second, it means that 2 tokens need to be added every 1000 milliseconds (1 second).
+- To determine the interval at which a single token should be added, you divide the total time (1000 milliseconds) by the number of tokens (2 tokens).
+- Thus, 1000 / 2 equals 500 milliseconds. This means one token should be added to the bucket every 500 milliseconds to achieve the fill rate of 2 tokens per second.
+
+## Implementing Token Bucket In An Express.js Application
+
+Lets take a simple Express.js server for example.
+
+```
+const express = require('express');
+
+const app = express();
+
+app.get('/',
+    (_, res) => {
+        res.send('Hello from the rate limited API');
+    }
+);
+
+app.listen(5500, () => console.log('Server is running'));
+```
+
+Here, we have a single route that returns a message. Currently, we do not have any mechanisms to limit the number of incoming request. Lets have a look at the following
+middleware which has implemented the Token Bucket algorithm.
+
+```
+// limit-middleware.js
+
+const { TokenBucket } = require("./token-bucket")
+
+function limitRequestMiddlware(capacity, fillRate) {
+    const bucket = new TokenBucket(capacity, fillRate);
+
+    return function rateLimitMiddleware(_, res, next) {
+        if (bucket.takeToken()) {
+            next();
+        } else {
+            res.status(429).send('Rate limit exceeded');
+        }
+    }
+}
+```
+
+Lets use this middleware in out Express application.
+
+```
+// index.js
+
+const express = require('express');
+const { limitRequestMiddlware } = require('./helpers/limit-middleware');
+
+const app = express();
+
+// maximum burst capacity
+const GLOBAL_BUCKET_CAPACITY = 5;
+// number of tokens added in the bucket per second
+const GLOBAL_FILL_PER_SECOND = 1;
+
+app.use(limitRequestMiddlware(GLOBAL_BUCKET_CAPACITY,GLOBAL_FILL_PER_SECOND))
+
+app.get('/',
+    (_, res) => {
+        res.send('Hello from the rate limited API');
+    }
+);
+
+app.listen(5500, () => console.log('Server is running'));
+```
+
+We have successfully implement an application-wide rate limiter in our application which supports a maximum burst rate of 5 requests across all clients.
+To test this we can use any HTTP client or even a browser since we are using a GET method in our endpoint and make continuous request 
+to `http://localhost:5500/`.
+
+We can see that for the first few requests, we get `Hello from the rate limited API` in response and after the bucket is emptied, our requests are
+dropped by the limit middleware and we get `Rate limit exceeded` as response.
+
+### Cons Of Timer Based, System Wide Token Bucket Implementation
+
+Although the above approach can work for small scale applications, having a system wide rate limiter across all client requests is not suitable since other clients' 
+requests can drain the tokens for some other clients' whose requests then will be dropped.
+
+Also, having a timer to refill the tokens can cause unecessary processing overhead and we can refactor this to refill the tokens when required.
+
+### Timer Free Token Bucket
+We can refactor the previous Token Bucket implementation to run without having a timer. To achieve this, we try to fill the bucket with the accumulated tokens 
+before trying to take the token.
+
+```
+class TimerFreeTokenBucket {
+    constructor(capacity, fillRatePerSecond) {
+        // total capacity of the bucket i.e. maximum burst rate
+        this.capacity = capacity;
+        // total tokens available, initialized to total capacity at the beginning
+        this.tokens = capacity;
+        // fill rate per second
+        this.fillRatePerSecond = fillRatePerSecond
+        // store the last filled date-time in unix timestamp in seconds
+        this.lastFilled = Math.floor(Date.now() / 1000);
+    }
+
+    getAvailableTokens() {
+        return this.tokens
+    }
+
+    refillTokens(){
+        // current timestamp in seconds
+        const now = Math.floor(Date.now() / 1000);
+        // get total time elapsed in seconds since last time bucket was filled
+        const timeElapsed = now - this.lastFilled;
+        // get total accumulated tokens since last time the bucket was filled
+        const accumulatedTokens = Math.floor(timeElapsed / this.fillRatePerSecond)
+        // total avaibale tokens
+        const totalAvailableTokens = accumulatedTokens + this.tokens;
+        // add available tokens to the bucket, without exceeding the capacity
+        this.tokens = Math.min(this.capacity,totalAvailableTokens)
+        // set last filled time to current time
+        this.lastFilled = now;
+    }
+ 
+    takeToken() {
+        // try to refill the token if any tokens are accumulated during the elapsed time
+        this.refillTokens();
+
+        if (this.tokens > 0) {
+            this.tokens -= 1
+            return true
+        }
+        return false
+    }
+}
+```
+
+We can now have a more efficient implementation of the algorithm without any processing overheads.
+
+### Implement IP Based Rate Limiting
+
+Lets crate a new middleware `ipBasedLimitMiddleware` implement rate limits for individual IPs. For this we will use built `Map` object to assign token bucket for individual IPs.
+We will also use `request` object of Express to get the source IP of the incoming request. With these changes, out middleware look like this:
+
+```
+function ipBasedLimitMiddleware(capacity, fillRate) {
+    const allBuckets = new Map()
+
+    return function ipRateLimitMiddleware(req, res, next) {
+        // check if the incoming IP has been assigned a bucket previously,
+        // if not assign a new TimerFreeTokenBucket
+        if (!allBuckets.has(req.ip)) {
+            allBuckets.set(req.ip, new TimerFreeTokenBucket(capacity, fillRate));
+        }
+
+        // get the bucket assigned the IP of the incoming request
+        const bucketOfIP = allBuckets.get(req.ip);
+        
+        if (bucketOfIP.takeToken()) {
+            next();
+        } else {
+            res.status(429).send('Rate limit exceeded');
+        }
+    }
+}
+```
+
+Similary, we have to modify our Express server to use the new middleware.
+
+```
+const express = require('express');
+const { ipBasedLimitMiddleware } = require('./helpers/limit-middleware');
+
+const app = express();
+
+// maximum burst capacity
+const GLOBAL_BUCKET_CAPACITY = 5;
+// number of tokens added in the bucket per second
+const GLOBAL_FILL_PER_SECOND = 1;
+
+app.use(ipBasedLimitMiddleware(GLOBAL_BUCKET_CAPACITY,GLOBAL_FILL_PER_SECOND))
+
+app.get('/',
+    (_, res) => {
+        res.send('Hello from the rate limited API');
+    }
+);
+
+app.listen(5500, () => console.log('Server is running'));
+```
+
+We can also use the middleware only in the routes we require, rather than having it applied system-wide. To acheive it, we have to modify our express application accordingly.
+
+```
+const express = require('express');
+const { ipBasedLimitMiddleware } = require('./helpers/limit-middleware');
+
+const app = express();
+
+// maximum burst capacity
+const GLOBAL_BUCKET_CAPACITY = 5;
+// number of tokens added in the bucket per second
+const GLOBAL_FILL_PER_SECOND = 1;
+
+// app.use(ipBasedLimitMiddleware(GLOBAL_BUCKET_CAPACITY,GLOBAL_FILL_PER_SECOND))
+
+app.get('/',
+    ipBasedLimitMiddleware(GLOBAL_BUCKET_CAPACITY,GLOBAL_FILL_PER_SECOND),
+    (_, res) => {
+        res.send('Hello from the rate limited API');
+    }
+);
+
+app.listen(5500, () => console.log('Server is running'));
+```
+
+### Conclusion
+Implementing rate limiting in your Node.js application is essential to protect against DoS attacks and to ensure fair usage of resources. The Token Bucket algorithm is an effective way to manage request rates, allowing for bursts of traffic while maintaining a steady flow. By extending the implementation to use a database like Redis or MongoDB, you can scale your application horizontally and manage rate limits in a distributed environment.

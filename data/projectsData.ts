@@ -6,6 +6,12 @@ const projectsData = [
     href: 'https://github.com/rahataid',
   },
   {
+    title: 'stage4all',
+    description: `stage4all is a SaaS NFT marketplace that provides advanced Web3 solutions for creators and businesses. Built with multi-tenancy in mind, its notable features include a minting factory for NFT creation, unlockable contents to enhance digital asset value, a secondary marketplace for trading NFTs, and multi-chain support across Ethereum, Polygon, and Binance.`,
+    imgSrc: '/static/images/projects/stage4all.png',
+    href: 'https://stage4all.com',
+  },
+  {
     title: 'Foodony',
     description: `Foodony is an online food delivery platform designed to cater to the local demand for convenient and diverse meal options. This platform provides a seamless experience for ordering food, integrating a reliable payment system, real-time tracking of placed orders etc. Foodony ensures a hassle-free and enjoyable food ordering experience, connecting customers with their favorite local restaurants effortlessly.`,
     imgSrc: '/static/images/projects/foodony.jpg',
